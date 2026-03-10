@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تجربة تتبع العين - جامعة الصفوة</title>
+    <script src="https://webgazer.cs.brown.edu/webgazer.js"></script>
+    
+    <style>
+        :root {
+            --gold: #d4af37;
+            --white: #ffffff;
+            --bg: #1a1a1a;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg);
+            color: var(--white);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        /* شريط التحميل الابتدائي */
+        #loader-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--bg);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            transition: opacity 1s ease;
+        }
+
+        .loader-bar {
+            width: 300px;
+            height: 10px;
+            background: #333;
+            border-radius: 5px;
+            overflow: hidden;
+            margin-top: 20px;
+        }
+
+        .loader-progress {
+            width: 0%;
+            height: 100%;
+            background: var(--gold);
+            transition: width 0.5s;
+        }
+
+        /* حاوية المحتوى الرئيسي */
+        #main-content {
+            text-align: center;
+            max-width: 800px;
+            padding: 20px;
+            opacity: 0;
+            transition: opacity 2s ease;
+        }
+
+        /* تنسيق الكلمات */
+        .word-container {
+            font-size: 2.5rem;
+            line-height: 1.8;
+            margin-bottom: 50px;
+        }
+
+        .word {
+            display: inline-block;
+            margin: 0 8px;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            cursor: default;
+        }
+
+        .word.active {
+            color: var(--gold);
+            transform: scale(1.4);
+            text-shadow: 0 0 15px rgba(212, 175, 55, 0.5);
+        }
+
+        /* تنسيق الأزرار */
+        .btn-container {
+            margin-top: 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .follow-btn {
+            background: transparent;
+            border: 2px solid var(--white);
+            color: var(--white);
+            padding: 15px 40px;
+            font-size: 1.2rem;
+            border-radius: 50px;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .follow-btn.gaze-focus {
+            border-color: var(--gold);
+            color: var(--gold);
+            transform: scale(1.1);
+        }
+
+        .btn-progress {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            height: 4px;
+            background: var(--gold);
+            width: 0%;
+        }
+
+        /* تخفية فيديو المعاينة */
+        #webgazerVideoContainer {
+            top: 20px !important;
+            left: 20px !important;
+            width: 150px !important;
+            height: 120px !important;
+            border-radius: 10px;
+            border: 2px solid var(--gold);
+        }
+    </style>
+</head>
+<body>
+
+    <div id-="loader-container">
+        <h2>جاري تهيئة نظام تتبع العين...</h2>
+        <p>يرجى السماح بالوصول للكاميرا</p>
+        <div class="loader-bar">
+            <div class="loader-progress" id="loading-progress"></div>
+        </div>
+    </div>
+
+    <div id="main-content">
+        <div id="text-target" class="word-container">
+            </div>
+
+        <div class="btn-container" id="button-area">
+            <button class="follow-btn" data-step="1">
+                متابعة
+                <div class="btn-progress"></div>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const textData = [
+            "أهلا و سهلا في جامعة الصفوة التي تضم الأقسام كاملة الطبية و غيرها",
+            "نحن نعتمد أرقى المعايير التعليمية لضمان مستقبل مشرق لطلبتنا الأعزاء",
+            "استعد لتجربة تعليمية فريدة مدعومة بأحدث التقنيات العالمية"
+        ];
+
+        let currentStep = 0;
+        let gazeStartTime = null;
+        const GAZE_DURATION = 1000; // 1 ثانية للتفعيل
+
+        // 1. تقطيع النص إلى Spans
+        function renderText(stepIndex) {
+            const container = document.getElementById('text-target');
+            container.innerHTML = '';
+            const words = textData[stepIndex].split(' ');
+            
+            words.forEach(word => {
+                const span = document.createElement('span');
+                span.className = 'word';
+                span.textContent = word;
+                container.appendChild(span);
+            });
+        }
+
+        // 2. إدارة شريط التحميل
+        function initLoader() {
+            let progress = 0;
+            const bar = document.getElementById('loading-progress');
+            const interval = setInterval(() => {
+                progress += Math.random() * 10;
+                if (progress >= 100) {
+                    progress = 100;
+                    clearInterval(interval);
+                    setTimeout(startExperience, 500);
+                }
+                bar.style.width = progress + '%';
+            }, 200);
+        }
+
+        // 3. بدء التجربة
+        function startExperience() {
+            document.getElementById('loader-container').style.opacity = '0';
+            setTimeout(() => {
+                document.getElementById('loader-container').style.display = 'none';
+                document.getElementById('main-content').style.opacity = '1';
+                renderText(0);
+            }, 1000);
+        }
+
+        // 4. منطق تتبع العين
+        window.onload = function() {
+            initLoader();
+
+            webgazer.setGazeListener((data, elapsedTime) => {
+                if (data == null) return;
+
+                const x = data.x;
+                const y = data.y;
+
+                // أ. التعامل مع الكلمات
+                const words = document.querySelectorAll('.word');
+                words.forEach(word => {
+                    const rect = word.getBoundingClientRect();
+                    if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+                        word.classList.add('active');
+                    } else {
+                        word.classList.remove('active');
+                    }
+                });
+
+                // ب. التعامل مع الأزرار (تفعيل بالنظر)
+                const buttons = document.querySelectorAll('.follow-btn');
+                let onButton = false;
+
+                buttons.forEach(btn => {
+                    const rect = btn.getBoundingClientRect();
+                    if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+                        onButton = true;
+                        btn.classList.add('gaze-focus');
+                        
+                        if (!gazeStartTime) gazeStartTime = elapsedTime;
+                        
+                        const duration = elapsedTime - gazeStartTime;
+                        const progress = Math.min((duration / GAZE_DURATION) * 100, 100);
+                        btn.querySelector('.btn-progress').style.width = progress + '%';
+
+                        if (duration >= GAZE_DURATION) {
+                            handleBtnClick();
+                            gazeStartTime = null; // إعادة تعيين
+                        }
+                    } else {
+                        btn.classList.remove('gaze-focus');
+                        btn.querySelector('.btn-progress').style.width = '0%';
+                    }
+                });
+
+                if (!onButton) gazeStartTime = null;
+
+            }).begin();
+
+            // ضبط إعدادات الكاميرا
+            webgazer.showVideoPreview(true)
+                .showPredictionPoints(true) // نقطة حمراء تظهر مكان نظرك للمساعدة
+                .applyKalmanFilter(true); // لتقليل اهتزاز النقطة
+        };
+
+        // 5. وظيفة الزر عند التفعيل
+        function handleBtnClick() {
+            if (currentStep < textData.length - 1) {
+                currentStep++;
+                // تأثير انتقال بسيط
+                document.getElementById('text-target').style.opacity = '0';
+                setTimeout(() => {
+                    renderText(currentStep);
+                    document.getElementById('text-target').style.opacity = '1';
+                }, 500);
+            } else {
+                alert("تم الانتهاء من جميع النصوص بنجاح!");
+                webgazer.pause();
+            }
+        }
+    </script>
+</body>
+</html>
