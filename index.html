@@ -1,283 +1,501 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>تجربة تتبع العين - جامعة الصفوة</title>
-    <script src="https://webgazer.cs.brown.edu/webgazer.js"></script>
-    
-    <style>
-        :root {
-            --gold: #d4af37;
-            --white: #ffffff;
-            --bg: #1a1a1a;
-        }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>جامعة الصفوة – تتبع العين</title>
 
-        body {
-            margin: 0;
-            padding: 0;
-            background-color: var(--bg);
-            color: var(--white);
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            overflow: hidden;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-        }
+  <!-- WebGazer from CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/webgazer@2.1.0/dist/webgazer.min.js"></script>
 
-        /* شريط التحميل الابتدائي */
-        #loader-container {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: var(--bg);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 9999;
-            transition: opacity 1s ease;
-        }
+  <style>
+    /* ── Variables ── */
+    :root {
+      --bg:        #0b0f1a;
+      --surface:   #111827;
+      --border:    #1e2d45;
+      --gold:      #f5c842;
+      --gold-glow: #f5c84266;
+      --text:      #c9d6e8;
+      --text-dim:  #4a5a72;
+      --read:      #6eb5ff;
+      --btn-bg:    #162235;
+      --btn-hover: #1d3050;
+      --radius:    14px;
+      --transition: 0.35s cubic-bezier(.4,0,.2,1);
+    }
 
-        .loader-bar {
-            width: 300px;
-            height: 10px;
-            background: #333;
-            border-radius: 5px;
-            overflow: hidden;
-            margin-top: 20px;
-        }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-        .loader-progress {
-            width: 0%;
-            height: 100%;
-            background: var(--gold);
-            transition: width 0.5s;
-        }
+    body {
+      font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 48px 24px 80px;
+      overflow-x: hidden;
+    }
 
-        /* حاوية المحتوى الرئيسي */
-        #main-content {
-            text-align: center;
-            max-width: 800px;
-            padding: 20px;
-            opacity: 0;
-            transition: opacity 2s ease;
-        }
+    /* ── Background decoration ── */
+    body::before {
+      content: '';
+      position: fixed; inset: 0; z-index: -1;
+      background:
+        radial-gradient(ellipse 60% 40% at 20% 10%, #0d2240 0%, transparent 70%),
+        radial-gradient(ellipse 50% 30% at 80% 90%, #0a1f38 0%, transparent 60%),
+        var(--bg);
+    }
 
-        /* تنسيق الكلمات */
-        .word-container {
-            font-size: 2.5rem;
-            line-height: 1.8;
-            margin-bottom: 50px;
-        }
+    /* ── Header ── */
+    .header {
+      text-align: center;
+      margin-bottom: 48px;
+      animation: fadeDown .8s ease both;
+    }
+    .header h1 {
+      font-size: clamp(1.6rem, 4vw, 2.6rem);
+      font-weight: 800;
+      letter-spacing: .5px;
+      background: linear-gradient(135deg, #f5c842 30%, #e8f4ff 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 8px;
+    }
+    .header p {
+      font-size: .9rem;
+      color: var(--text-dim);
+    }
 
-        .word {
-            display: inline-block;
-            margin: 0 8px;
-            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            cursor: default;
-        }
+    /* ── Status bar ── */
+    #status-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 40px;
+      padding: 10px 22px;
+      margin-bottom: 40px;
+      font-size: .82rem;
+      animation: fadeDown .9s .15s ease both;
+      opacity: 0;
+    }
+    #status-bar.visible { opacity: 1; }
+    .dot {
+      width: 9px; height: 9px;
+      border-radius: 50%;
+      background: #ff5e5e;
+      flex-shrink: 0;
+      transition: background .4s;
+    }
+    .dot.active { background: #4cef80; box-shadow: 0 0 6px #4cef80; animation: pulse 1.4s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
 
-        .word.active {
-            color: var(--gold);
-            transform: scale(1.4);
-            text-shadow: 0 0 15px rgba(212, 175, 55, 0.5);
-        }
+    /* ── Card ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 36px 40px;
+      max-width: 780px;
+      width: 100%;
+      margin-bottom: 36px;
+      animation: fadeUp .8s .3s ease both;
+      opacity: 0;
+      box-shadow: 0 4px 40px #00000044;
+    }
+    .card.visible { opacity: 1; }
+    .card-label {
+      font-size: .72rem;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 20px;
+    }
 
-        /* تنسيق الأزرار */
-        .btn-container {
-            margin-top: 30px;
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-            align-items: center;
-        }
+    /* ── Text with eye-tracked words ── */
+    #tracked-text {
+      font-size: clamp(1.15rem, 2.8vw, 1.5rem);
+      line-height: 2.4;
+      word-spacing: 6px;
+    }
+    .word {
+      display: inline-block;
+      cursor: default;
+      color: var(--text);
+      transition:
+        color var(--transition),
+        transform var(--transition),
+        text-shadow var(--transition);
+      transform-origin: center bottom;
+      padding: 0 2px;
+      border-radius: 4px;
+    }
+    .word.gazed {
+      color: var(--gold);
+      transform: scale(1.35);
+      text-shadow: 0 0 18px var(--gold-glow), 0 0 4px var(--gold-glow);
+    }
+    .word.read {
+      color: var(--read);
+    }
+    .word.read.gazed {
+      color: var(--gold);  /* gold overrides read when gazing */
+    }
 
-        .follow-btn {
-            background: transparent;
-            border: 2px solid var(--white);
-            color: var(--white);
-            padding: 15px 40px;
-            font-size: 1.2rem;
-            border-radius: 50px;
-            transition: all 0.3s;
-            position: relative;
-            overflow: hidden;
-        }
+    /* ── Buttons section ── */
+    .buttons-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      justify-content: center;
+    }
 
-        .follow-btn.gaze-focus {
-            border-color: var(--gold);
-            color: var(--gold);
-            transform: scale(1.1);
-        }
+    .gaze-btn {
+      position: relative;
+      background: var(--btn-bg);
+      color: #a8c4e0;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px 36px;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      overflow: hidden;
+      transition: background var(--transition), border-color var(--transition), color var(--transition), transform .2s;
+      min-width: 150px;
+    }
+    .gaze-btn:hover { background: var(--btn-hover); }
+    .gaze-btn:active { transform: scale(.96); }
 
-        .btn-progress {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            height: 4px;
-            background: var(--gold);
-            width: 0%;
-        }
+    /* Progress ring indicator inside button */
+    .gaze-btn .btn-label { position: relative; z-index: 1; pointer-events: none; }
 
-        /* تخفية فيديو المعاينة */
-        #webgazerVideoContainer {
-            top: 20px !important;
-            left: 20px !important;
-            width: 150px !important;
-            height: 120px !important;
-            border-radius: 10px;
-            border: 2px solid var(--gold);
-        }
-    </style>
+    .gaze-btn .progress-ring {
+      position: absolute;
+      inset: 0;
+      border-radius: 12px;
+      background: conic-gradient(var(--gold) 0deg, transparent 0deg);
+      opacity: 0;
+      transition: opacity .2s;
+      pointer-events: none;
+    }
+    .gaze-btn.gazing .progress-ring { opacity: 1; }
+    .gaze-btn.gazing {
+      border-color: var(--gold);
+      color: var(--gold);
+    }
+    .gaze-btn.activated {
+      background: #2a1f00;
+      border-color: var(--gold);
+      color: var(--gold);
+      box-shadow: 0 0 20px var(--gold-glow);
+      animation: btnFlash .5s ease;
+    }
+    @keyframes btnFlash {
+      0%   { box-shadow: 0 0 0 var(--gold-glow); }
+      50%  { box-shadow: 0 0 40px var(--gold-glow); }
+      100% { box-shadow: 0 0 20px var(--gold-glow); }
+    }
+
+    /* ── Gaze cursor ── */
+    #gaze-cursor {
+      position: fixed;
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      background: radial-gradient(circle, #f5c842cc, #f5c84200);
+      border: 2px solid var(--gold);
+      pointer-events: none;
+      z-index: 9999;
+      transform: translate(-50%, -50%);
+      transition: left .08s linear, top .08s linear;
+      display: none;
+    }
+
+    /* ── Animations ── */
+    @keyframes fadeDown {
+      from { opacity:0; transform:translateY(-20px); }
+      to   { opacity:1; transform:translateY(0); }
+    }
+    @keyframes fadeUp {
+      from { opacity:0; transform:translateY(24px); }
+      to   { opacity:1; transform:translateY(0); }
+    }
+
+    /* ── Toast ── */
+    #toast {
+      position: fixed;
+      bottom: 30px; left: 50%; transform: translateX(-50%) translateY(20px);
+      background: #162235;
+      border: 1px solid var(--gold);
+      color: var(--gold);
+      padding: 12px 28px;
+      border-radius: 40px;
+      font-size: .85rem;
+      opacity: 0;
+      transition: opacity .4s, transform .4s;
+      z-index: 1000;
+      pointer-events: none;
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* ── Responsive ── */
+    @media (max-width: 600px) {
+      .card { padding: 24px 20px; }
+      #tracked-text { font-size: 1.05rem; line-height: 2.2; }
+      .gaze-btn { padding: 15px 26px; font-size: .92rem; }
+    }
+  </style>
 </head>
 <body>
 
-    <div id-="loader-container">
-        <h2>جاري تهيئة نظام تتبع العين...</h2>
-        <p>يرجى السماح بالوصول للكاميرا</p>
-        <div class="loader-bar">
-            <div class="loader-progress" id="loading-progress"></div>
-        </div>
-    </div>
+  <div class="header">
+    <h1>جامعة الصفوة</h1>
+    <p>تجربة تتبع العين · Eye Tracking Demo</p>
+  </div>
 
-    <div id="main-content">
-        <div id="text-target" class="word-container">
-            </div>
+  <div id="status-bar">
+    <div class="dot" id="status-dot"></div>
+    <span id="status-text">جارٍ تهيئة الكاميرا…</span>
+  </div>
 
-        <div class="btn-container" id="button-area">
-            <button class="follow-btn" data-step="1">
-                متابعة
-                <div class="btn-progress"></div>
-            </button>
-        </div>
-    </div>
+  <!-- Text card -->
+  <div class="card" id="text-card">
+    <div class="card-label">✦ انظر إلى الكلمات</div>
+    <div id="tracked-text"></div>
+  </div>
 
-    <script>
-        const textData = [
-            "أهلا و سهلا في جامعة الصفوة التي تضم الأقسام كاملة الطبية و غيرها",
-            "نحن نعتمد أرقى المعايير التعليمية لضمان مستقبل مشرق لطلبتنا الأعزاء",
-            "استعد لتجربة تعليمية فريدة مدعومة بأحدث التقنيات العالمية"
-        ];
+  <!-- Buttons card -->
+  <div class="card" id="btn-card">
+    <div class="card-label">✦ انظر إلى الزر لمدة ثانية لتفعيله</div>
+    <div class="buttons-grid" id="buttons-grid"></div>
+  </div>
 
-        let currentStep = 0;
-        let gazeStartTime = null;
-        const GAZE_DURATION = 1000; // 1 ثانية للتفعيل
+  <!-- Floating gaze cursor -->
+  <div id="gaze-cursor"></div>
 
-        // 1. تقطيع النص إلى Spans
-        function renderText(stepIndex) {
-            const container = document.getElementById('text-target');
-            container.innerHTML = '';
-            const words = textData[stepIndex].split(' ');
-            
-            words.forEach(word => {
-                const span = document.createElement('span');
-                span.className = 'word';
-                span.textContent = word;
-                container.appendChild(span);
-            });
-        }
+  <!-- Toast notification -->
+  <div id="toast" id="toast"></div>
 
-        // 2. إدارة شريط التحميل
-        function initLoader() {
-            let progress = 0;
-            const bar = document.getElementById('loading-progress');
-            const interval = setInterval(() => {
-                progress += Math.random() * 10;
-                if (progress >= 100) {
-                    progress = 100;
-                    clearInterval(interval);
-                    setTimeout(startExperience, 500);
-                }
-                bar.style.width = progress + '%';
-            }, 200);
-        }
+<script>
+/* ═══════════════════════════════════════
+   CONFIG
+═══════════════════════════════════════ */
+const SENTENCE = "أهلا و سهلا في جامعة الصفوة التي تضم الأقسام كاملة الطبية و غيرها";
+const BTN_LABELS = ["متابعة ١", "متابعة ٢", "متابعة ٣", "متابعة ٤"];
+const GAZE_DWELL_MS = 1000;   // ms to activate a button
+const SMOOTH_K = 0.20;        // lower = smoother gaze cursor
 
-        // 3. بدء التجربة
-        function startExperience() {
-            document.getElementById('loader-container').style.opacity = '0';
-            setTimeout(() => {
-                document.getElementById('loader-container').style.display = 'none';
-                document.getElementById('main-content').style.opacity = '1';
-                renderText(0);
-            }, 1000);
-        }
+/* ═══════════════════════════════════════
+   BUILD UI
+═══════════════════════════════════════ */
+// Words
+const textContainer = document.getElementById('tracked-text');
+const words = SENTENCE.split(' ');
+const wordEls = [];
 
-        // 4. منطق تتبع العين
-        window.onload = function() {
-            initLoader();
+words.forEach((w, i) => {
+  const sp = document.createElement('span');
+  sp.className = 'word';
+  sp.textContent = w;
+  sp.dataset.index = i;
+  textContainer.appendChild(sp);
+  if (i < words.length - 1) textContainer.appendChild(document.createTextNode(' '));
+  wordEls.push(sp);
+});
 
-            webgazer.setGazeListener((data, elapsedTime) => {
-                if (data == null) return;
+// Buttons
+const btnsGrid = document.getElementById('buttons-grid');
+const btnEls = BTN_LABELS.map(label => {
+  const btn = document.createElement('button');
+  btn.className = 'gaze-btn';
+  btn.innerHTML = `<div class="progress-ring" id="ring-${label}"></div><span class="btn-label">${label}</span>`;
+  btn.addEventListener('click', () => onBtnActivate(btn, label));
+  btnsGrid.appendChild(btn);
+  return btn;
+});
 
-                const x = data.x;
-                const y = data.y;
+/* ═══════════════════════════════════════
+   GAZE CURSOR
+═══════════════════════════════════════ */
+const cursor = document.getElementById('gaze-cursor');
+let smoothX = 0, smoothY = 0;
 
-                // أ. التعامل مع الكلمات
-                const words = document.querySelectorAll('.word');
-                words.forEach(word => {
-                    const rect = word.getBoundingClientRect();
-                    if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
-                        word.classList.add('active');
-                    } else {
-                        word.classList.remove('active');
-                    }
-                });
+function updateCursor(x, y) {
+  smoothX += (x - smoothX) * SMOOTH_K;
+  smoothY += (y - smoothY) * SMOOTH_K;
+  cursor.style.left = smoothX + 'px';
+  cursor.style.top  = smoothY + 'px';
+}
 
-                // ب. التعامل مع الأزرار (تفعيل بالنظر)
-                const buttons = document.querySelectorAll('.follow-btn');
-                let onButton = false;
+/* ═══════════════════════════════════════
+   HIT TEST
+═══════════════════════════════════════ */
+function getElementAtGaze(x, y) {
+  // Check words
+  for (const el of wordEls) {
+    const r = el.getBoundingClientRect();
+    if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) return { type: 'word', el };
+  }
+  // Check buttons
+  for (const el of btnEls) {
+    const r = el.getBoundingClientRect();
+    if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) return { type: 'btn', el };
+  }
+  return null;
+}
 
-                buttons.forEach(btn => {
-                    const rect = btn.getBoundingClientRect();
-                    if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
-                        onButton = true;
-                        btn.classList.add('gaze-focus');
-                        
-                        if (!gazeStartTime) gazeStartTime = elapsedTime;
-                        
-                        const duration = elapsedTime - gazeStartTime;
-                        const progress = Math.min((duration / GAZE_DURATION) * 100, 100);
-                        btn.querySelector('.btn-progress').style.width = progress + '%';
+/* ═══════════════════════════════════════
+   WORD STATE
+═══════════════════════════════════════ */
+let currentWord = null;
 
-                        if (duration >= GAZE_DURATION) {
-                            handleBtnClick();
-                            gazeStartTime = null; // إعادة تعيين
-                        }
-                    } else {
-                        btn.classList.remove('gaze-focus');
-                        btn.querySelector('.btn-progress').style.width = '0%';
-                    }
-                });
+function setGazedWord(el) {
+  if (currentWord === el) return;
+  if (currentWord) currentWord.classList.remove('gazed');
+  currentWord = el;
+  if (el) {
+    el.classList.add('gazed');
+    el.classList.add('read');   // mark as read permanently
+  }
+}
 
-                if (!onButton) gazeStartTime = null;
+/* ═══════════════════════════════════════
+   BUTTON DWELL
+═══════════════════════════════════════ */
+let gazeBtn = null;
+let gazeStart = null;
+let dwellRAF = null;
 
-            }).begin();
+function startDwell(btn) {
+  if (gazeBtn === btn) return;
+  cancelDwell();
+  gazeBtn = btn;
+  gazeStart = performance.now();
+  btn.classList.add('gazing');
+  animateDwell();
+}
 
-            // ضبط إعدادات الكاميرا
-            webgazer.showVideoPreview(true)
-                .showPredictionPoints(true) // نقطة حمراء تظهر مكان نظرك للمساعدة
-                .applyKalmanFilter(true); // لتقليل اهتزاز النقطة
-        };
+function animateDwell() {
+  if (!gazeBtn) return;
+  const elapsed = performance.now() - gazeStart;
+  const pct = Math.min(elapsed / GAZE_DWELL_MS, 1);
+  const deg = pct * 360;
+  const ring = gazeBtn.querySelector('.progress-ring');
+  if (ring) ring.style.background = `conic-gradient(var(--gold) ${deg}deg, transparent ${deg}deg)`;
 
-        // 5. وظيفة الزر عند التفعيل
-        function handleBtnClick() {
-            if (currentStep < textData.length - 1) {
-                currentStep++;
-                // تأثير انتقال بسيط
-                document.getElementById('text-target').style.opacity = '0';
-                setTimeout(() => {
-                    renderText(currentStep);
-                    document.getElementById('text-target').style.opacity = '1';
-                }, 500);
-            } else {
-                alert("تم الانتهاء من جميع النصوص بنجاح!");
-                webgazer.pause();
-            }
-        }
-    </script>
+  if (pct >= 1) {
+    gazeBtn.click();
+    cancelDwell();
+    return;
+  }
+  dwellRAF = requestAnimationFrame(animateDwell);
+}
+
+function cancelDwell() {
+  if (dwellRAF) { cancelAnimationFrame(dwellRAF); dwellRAF = null; }
+  if (gazeBtn) {
+    gazeBtn.classList.remove('gazing');
+    const ring = gazeBtn.querySelector('.progress-ring');
+    if (ring) ring.style.background = '';
+    gazeBtn = null;
+  }
+  gazeStart = null;
+}
+
+function onBtnActivate(btn, label) {
+  btn.classList.add('activated');
+  showToast(`✅ تم تفعيل زر: ${label}`);
+  setTimeout(() => btn.classList.remove('activated'), 2000);
+}
+
+/* ═══════════════════════════════════════
+   TOAST
+═══════════════════════════════════════ */
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+/* ═══════════════════════════════════════
+   WEBGAZER INIT
+═══════════════════════════════════════ */
+const statusDot  = document.getElementById('status-dot');
+const statusText = document.getElementById('status-text');
+
+function setStatus(active, msg) {
+  statusDot.className = 'dot' + (active ? ' active' : '');
+  statusText.textContent = msg;
+  document.getElementById('status-bar').classList.add('visible');
+  document.getElementById('text-card').classList.add('visible');
+  document.getElementById('btn-card').classList.add('visible');
+}
+
+// Hide WebGazer's own video overlay & face overlay
+function hideWebgazerUI() {
+  const ids = ['webgazerVideoContainer','webgazerFaceOverlay','webgazerFaceFeedbackBox','webgazerGazeDot'];
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+  // Also hide via style tag
+  const s = document.createElement('style');
+  s.textContent = '#webgazerVideoContainer,#webgazerFaceOverlay,#webgazerFaceFeedbackBox,#webgazerGazeDot{display:none!important}';
+  document.head.appendChild(s);
+}
+
+window.addEventListener('load', () => {
+  setStatus(false, 'جارٍ تهيئة الكاميرا…');
+
+  webgazer
+    .setGazeListener((data) => {
+      if (!data) return;
+      const x = data.x, y = data.y;
+
+      // Update custom cursor
+      cursor.style.display = 'block';
+      updateCursor(x, y);
+
+      // Hit test
+      const hit = getElementAtGaze(x, y);
+
+      if (hit && hit.type === 'word') {
+        setGazedWord(hit.el);
+        cancelDwell();
+      } else if (hit && hit.type === 'btn') {
+        setGazedWord(null);
+        startDwell(hit.el);
+      } else {
+        setGazedWord(null);
+        cancelDwell();
+      }
+    })
+    .showPredictionPoints(false)
+    .showVideoPreview(false)
+    .begin()
+    .then(() => {
+      hideWebgazerUI();
+      setStatus(true, 'تتبع العين نشط ✦ انظر إلى الكلمات أو الأزرار');
+    })
+    .catch(err => {
+      console.error(err);
+      setStatus(false, '⚠️ تعذّر الوصول إلى الكاميرا. يرجى السماح بها وإعادة التحميل.');
+    });
+});
+
+// Clean up on unload
+window.addEventListener('beforeunload', () => {
+  try { webgazer.end(); } catch(e) {}
+});
+</script>
 </body>
 </html>
